@@ -12,6 +12,25 @@ from .nlp import (
 )
 
 
+def merge_resume_contact_data(entities: dict | None, *, email: str | None = None, phone: str | None = None) -> dict:
+    """Merge structured resume contact fields into the entity payload used for storage and export."""
+    merged = dict(entities or {})
+    if email:
+        merged["emails"] = [email]
+    elif "emails" not in merged or not merged["emails"]:
+        merged["emails"] = []
+
+    if phone:
+        merged["phones"] = [phone]
+    elif "phones" not in merged or not merged["phones"]:
+        merged["phones"] = []
+
+    for key in ("organizations", "locations"):
+        if key not in merged:
+            merged[key] = []
+    return merged
+
+
 def analyse_job(analysis_id: str, upload_paths: list[tuple[str, str]]) -> None:
     """Run in FastAPI's background worker; results are persisted for polling."""
     db = SessionLocal()
@@ -109,8 +128,14 @@ def analyse_job(analysis_id: str, upload_paths: list[tuple[str, str]]) -> None:
                 projects = extract_projects(text)
                 experience_details = extract_experience_details(text)
             
-            # Extract entities for other information
+            # Extract entities for other information and preserve contact metadata from the resume itself.
             entities = extract_entities(text)
+            extracted_email = None
+            extracted_phone = None
+            if isinstance(ollama_data, dict):
+                extracted_email = ollama_data.get("email")
+                extracted_phone = ollama_data.get("phone")
+            entities = merge_resume_contact_data(entities, email=extracted_email, phone=extracted_phone)
             
             # Ensure experience_details is in the right format for database
             if not isinstance(experience_details, list):

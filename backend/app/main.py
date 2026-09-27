@@ -10,12 +10,14 @@ if __package__ in (None, ""):
     from app.config import settings
     from app.database import Base, engine, get_db
     from app.models import Analysis, Candidate
+    from app.nlp import extract_education, extract_entities
     from app.schemas import AnalysisOut, CandidateOut, AnalysisStatusOut, CompletedResumeOut, CurrentResumeState, JobDescriptionExtractOut
     from app.services import analyse_job
 else:
     from .config import settings
     from .database import Base, engine, get_db
     from .models import Analysis, Candidate
+    from .nlp import extract_education, extract_entities
     from .schemas import AnalysisOut, CandidateOut, AnalysisStatusOut, CompletedResumeOut, CurrentResumeState, JobDescriptionExtractOut
     from .services import analyse_job
 
@@ -189,6 +191,24 @@ def _to_export_string(value) -> str:
     return str(value)
 
 
+def _export_candidate_fields(candidate) -> dict:
+    """Recover resume metadata from stored JSON or raw text when earlier stages dropped it."""
+    entities = getattr(candidate, "entities", {}) or {}
+    fallback_entities = extract_entities(getattr(candidate, "text", "") or "")
+
+    email = candidate.email or _to_export_string(entities.get("emails") or fallback_entities.get("emails") or [])
+    phone = _to_export_string(entities.get("phones") or fallback_entities.get("phones") or [])
+    location = _to_export_string(entities.get("locations") or fallback_entities.get("locations") or [])
+    education = candidate.education or extract_education(getattr(candidate, "text", "") or "") or "Not specified"
+
+    return {
+        "email": email,
+        "phone": phone,
+        "location": location,
+        "education": education,
+    }
+
+
 def build_report_workbook(analysis: Analysis) -> Workbook:
     workbook = Workbook()
     summary = workbook.active
@@ -203,6 +223,18 @@ def build_report_workbook(analysis: Analysis) -> Workbook:
     else:
         req_text = ", ".join(analysis.requirements or [])
     summary.append(["Requirements", req_text])
+    summary.append([])
+    summary.append(["Candidate", "Email", "Phone", "Location", "Education", "Top Skills"])
+    for candidate in sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True):
+        contact_fields = _export_candidate_fields(candidate)
+        summary.append([
+            candidate.name,
+            contact_fields["email"],
+            contact_fields["phone"],
+            contact_fields["location"],
+            contact_fields["education"],
+            ", ".join(candidate.skills[:8]),
+        ])
 
     ranking = workbook.create_sheet("Candidate ranking")
     ranking.append([
@@ -211,10 +243,11 @@ def build_report_workbook(analysis: Analysis) -> Workbook:
     ])
 
     for rank, candidate in enumerate(sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True), 1):
+        contact_fields = _export_candidate_fields(candidate)
         ranking.append([
             rank,
             candidate.name,
-            candidate.email,
+            contact_fields["email"],
             candidate.overall_score,
             candidate.semantic_score,
             candidate.keyword_score,
@@ -233,24 +266,25 @@ def build_report_workbook(analysis: Analysis) -> Workbook:
     ])
     for rank, candidate in enumerate(sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True), 1):
         entities = getattr(candidate, "entities", {}) or {}
+        contact_fields = _export_candidate_fields(candidate)
         details.append([
             rank,
             candidate.name,
-            candidate.email,
-            _to_export_string(entities.get("phones") or []),
+            contact_fields["email"],
+            contact_fields["phone"],
             candidate.overall_score,
             candidate.semantic_score,
             candidate.keyword_score,
             candidate.experience_score,
             candidate.recommendation,
             entities.get("experience_years") if isinstance(entities.get("experience_years"), (int, float)) else 0,
-            candidate.education or "Not specified",
+            contact_fields["education"],
             ", ".join(candidate.skills),
             ", ".join(candidate.missing_skills),
             _to_export_string(getattr(candidate, "projects", []) or []),
             _to_export_string(getattr(candidate, "experience_details", []) or []),
             _to_export_string(entities.get("organizations") or []),
-            _to_export_string(entities.get("locations") or []),
+            contact_fields["location"],
             getattr(candidate, "insight", ""),
         ])
 

@@ -13,6 +13,7 @@ from app.nlp import (
     extract_work_dates, calculate_total_experience, normalize_cosine_similarity,
     calculate_composite_score, infer_name
 )
+from app.services import merge_resume_contact_data
 
 def test_pdf_sanitization():
     """Test PDF text sanitization removes template noise."""
@@ -35,9 +36,13 @@ def test_pdf_sanitization():
     
     # Check that template noise is removed
     assert "qwikresume.com" not in cleaned.lower(), "Template URL not removed"
-    assert "email:" not in cleaned.lower(), "Email header not removed"
-    assert "phone:" not in cleaned.lower(), "Phone header not removed"
-    assert "address:" not in cleaned.lower(), "Address header not removed"
+    assert "resume template" not in cleaned.lower(), "Resume template text not removed"
+
+    # Check that valid candidate contact information is preserved for extraction.
+    # We intentionally keep actual resume contact details even when they appear in "Email:", "Phone:" labels.
+    assert "john.doe@email.com" in cleaned.lower(), "Valid email was stripped from the resume"
+    assert "+1-555-0123" in cleaned, "Valid phone number was stripped from the resume"
+    assert "123 Tech Street" in cleaned, "Valid address was stripped from the resume"
     
     # Check that meaningful content is preserved
     assert "John Doe" in cleaned, "Name removed incorrectly"
@@ -45,6 +50,67 @@ def test_pdf_sanitization():
     assert "Experience" in cleaned, "Section header removed incorrectly"
     
     print("✓ PDF sanitization working correctly")
+
+
+def test_resume_contact_metadata_is_preserved():
+    """Existing email/phone values should not be wiped out during merge."""
+    entities = {
+        "emails": ["john.doe@example.com"],
+        "phones": ["+1-555-0123"],
+        "locations": ["New York, NY"],
+        "organizations": ["Acme Corp"],
+    }
+
+    merged = merge_resume_contact_data(entities, email=None, phone=None)
+
+    assert merged["emails"] == ["john.doe@example.com"], "Existing email should be preserved"
+    assert merged["phones"] == ["+1-555-0123"], "Existing phone should be preserved"
+    assert merged["locations"] == ["New York, NY"], "Existing location should be preserved"
+
+    merged_override = merge_resume_contact_data(entities, email="new@example.com", phone="+2-444-5678")
+    assert merged_override["emails"] == ["new@example.com"], "Override email should replace the stored value"
+    assert merged_override["phones"] == ["+2-444-5678"], "Override phone should replace the stored value"
+
+    print("✓ Resume contact metadata merge preserves valid extracted values")
+
+
+def test_workbook_recovers_contact_fields_from_resume_text():
+    """Export should recover missing email/phone/location from raw resume text if stored fields were lost."""
+    from types import SimpleNamespace
+
+    candidate = SimpleNamespace(
+        name="Jane Smith",
+        email=None,
+        overall_score=89,
+        semantic_score=88,
+        keyword_score=87,
+        experience_score=86,
+        recommendation="Strong Match",
+        skills=["Python", "FastAPI"],
+        missing_skills=[],
+        insight="Good fit",
+        education=None,
+        projects=[],
+        experience_details=[],
+        entities={},
+        text="""
+        Jane Smith
+        Senior Python Engineer
+        Email: jane.smith@example.com
+        Phone: +1 (415) 555-1234
+        San Francisco, CA
+        Education: B.S. Computer Science
+        """,
+    )
+
+    analysis = SimpleNamespace(candidates=[candidate], job_title="Senior Python Engineer", requirements={"required": ["Python"], "preferred": ["FastAPI"]})
+    workbook = build_report_workbook(analysis)
+    summary_rows = list(workbook["Summary"].iter_rows(values_only=True))
+    assert any(row and row[0] == "Jane Smith" and "jane.smith@example.com" in str(row[1]) for row in summary_rows), "Email was not recovered from raw resume text"
+    assert any(row and row[0] == "Jane Smith" and "+1 (415) 555-1234" in str(row[2]) for row in summary_rows), "Phone was not recovered from raw resume text"
+    assert any(row and row[0] == "Jane Smith" and "San Francisco" in str(row[3]) for row in summary_rows), "Location was not recovered from raw resume text"
+
+    print("✓ Workbook export recovers missing contact fields from resume text")
 
 
 def test_jd_skill_extraction():
@@ -235,6 +301,12 @@ def test_report_workbook_includes_candidate_details():
     assert "Candidate ranking" in sheet_names, "Ranking sheet missing"
     assert "Candidate details" in sheet_names, "Candidate detail sheet missing"
 
+    summary = workbook["Summary"]
+    summary_rows = list(summary.iter_rows(values_only=True))
+    assert any("Alice Johnson" in str(value) for row in summary_rows for value in row), "Candidate name missing from summary sheet"
+    assert any("alice@example.com" in str(value) for row in summary_rows for value in row), "Email missing from summary sheet"
+    assert any("+1-555-0101" in str(value) for row in summary_rows for value in row), "Phone missing from summary sheet"
+
     details = workbook["Candidate details"]
     rows = list(details.iter_rows(values_only=True))
     assert any("Alice Johnson" in str(value) for row in rows for value in row), "Candidate name missing from detail sheet"
@@ -245,6 +317,23 @@ def test_report_workbook_includes_candidate_details():
     assert any("Acme Corp" in str(value) for row in rows for value in row), "Organization missing from detail sheet"
 
     print("✓ Excel report includes candidate details")
+
+
+def test_resume_contact_metadata_is_preserved():
+    """Resume email and phone extracted from the document should survive into candidate entities and export."""
+    print("Testing resume metadata preservation...")
+
+    merged = merge_resume_contact_data(
+        {"organizations": ["Acme Corp"], "locations": ["Boston, MA"]},
+        email="alice@example.com",
+        phone="+1-555-0101",
+    )
+
+    assert merged["emails"] == ["alice@example.com"], "Email missing from merged candidate metadata"
+    assert merged["phones"] == ["+1-555-0101"], "Phone missing from merged candidate metadata"
+    assert merged["locations"] == ["Boston, MA"], "Location changed during metadata merge"
+
+    print("✓ Resume metadata preserved for export")
 
 
 def run_all_tests():
@@ -261,6 +350,7 @@ def run_all_tests():
         test_composite_scoring()
         test_name_inference()
         test_report_workbook_includes_candidate_details()
+        test_resume_contact_metadata_is_preserved()
         
         print("=" * 50)
         print("✓ All tests passed successfully!")
