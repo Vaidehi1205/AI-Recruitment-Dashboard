@@ -7,6 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from app.main import build_report_workbook
 from app.nlp import (
     sanitize_pdf_text, extract_skills, extract_jd_requirements,
     extract_work_dates, calculate_total_experience, normalize_cosine_similarity,
@@ -193,6 +194,59 @@ def test_name_inference():
     print("✓ Name inference working correctly")
 
 
+def test_report_workbook_includes_candidate_details():
+    """Candidate data must be exported into the Excel report."""
+    print("Testing Excel report export details...")
+
+    from types import SimpleNamespace
+
+    candidate = SimpleNamespace(
+        name="Alice Johnson",
+        email="alice@example.com",
+        overall_score=88,
+        semantic_score=90,
+        keyword_score=85,
+        experience_score=80,
+        recommendation="Strong Match",
+        skills=["Python", "FastAPI", "SQL"],
+        missing_skills=["AWS"],
+        insight="Strong backend fit with a gap in cloud deployment.",
+        education="BSc Computer Science",
+        projects=["Internal API Gateway"],
+        experience_details=[{"title": "Backend Engineer", "organization": "Acme"}],
+        entities={
+            "phones": ["+1-555-0101"],
+            "organizations": ["Acme Corp"],
+            "locations": ["Boston, MA"],
+            "experience_years": 6,
+        },
+    )
+    analysis = SimpleNamespace(
+        job_title="Senior Python Engineer",
+        requirements={
+            "required": ["Python", "FastAPI", "SQL"],
+            "preferred": ["AWS"],
+        },
+        candidates=[candidate],
+    )
+
+    workbook = build_report_workbook(analysis)
+    sheet_names = workbook.sheetnames
+    assert "Candidate ranking" in sheet_names, "Ranking sheet missing"
+    assert "Candidate details" in sheet_names, "Candidate detail sheet missing"
+
+    details = workbook["Candidate details"]
+    rows = list(details.iter_rows(values_only=True))
+    assert any("Alice Johnson" in str(value) for row in rows for value in row), "Candidate name missing from detail sheet"
+    assert any("FastAPI" in str(value) for row in rows for value in row), "Matched skills missing from detail sheet"
+    assert any("AWS" in str(value) for row in rows for value in row), "Missing skills missing from detail sheet"
+    assert any("+1-555-0101" in str(value) for row in rows for value in row), "Phone number missing from detail sheet"
+    assert any("Boston, MA" in str(value) for row in rows for value in row), "Location missing from detail sheet"
+    assert any("Acme Corp" in str(value) for row in rows for value in row), "Organization missing from detail sheet"
+
+    print("✓ Excel report includes candidate details")
+
+
 def run_all_tests():
     """Run all validation tests."""
     print("=" * 50)
@@ -206,6 +260,7 @@ def run_all_tests():
         test_semantic_normalization()
         test_composite_scoring()
         test_name_inference()
+        test_report_workbook_includes_candidate_details()
         
         print("=" * 50)
         print("✓ All tests passed successfully!")

@@ -1,6 +1,24 @@
 import shutil
+import sys
 import uuid
 from pathlib import Path
+
+if __package__ in (None, ""):
+    backend_root = Path(__file__).resolve().parent.parent
+    if str(backend_root) not in sys.path:
+        sys.path.insert(0, str(backend_root))
+    from app.config import settings
+    from app.database import Base, engine, get_db
+    from app.models import Analysis, Candidate
+    from app.schemas import AnalysisOut, CandidateOut, AnalysisStatusOut, CompletedResumeOut, CurrentResumeState, JobDescriptionExtractOut
+    from app.services import analyse_job
+else:
+    from .config import settings
+    from .database import Base, engine, get_db
+    from .models import Analysis, Candidate
+    from .schemas import AnalysisOut, CandidateOut, AnalysisStatusOut, CompletedResumeOut, CurrentResumeState, JobDescriptionExtractOut
+    from .services import analyse_job
+
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -9,11 +27,6 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from openpyxl import Workbook
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
-from .config import settings
-from .database import Base, engine, get_db
-from .models import Analysis, Candidate
-from .schemas import AnalysisOut, CandidateOut, AnalysisStatusOut, CompletedResumeOut, CurrentResumeState, JobDescriptionExtractOut
-from .services import analyse_job
 
 app = FastAPI(title="RecruitAI API", version="1.0.0", docs_url=None)
 app.add_middleware(
@@ -166,6 +179,91 @@ def to_analysis_out(analysis: Analysis, include_candidates: bool = True) -> Anal
                        candidate_count=len(analysis.candidates), candidates=[CandidateOut.model_validate(item) for item in candidates])
 
 
+def _to_export_string(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(item) for item in value if item)
+    if isinstance(value, dict):
+        return ", ".join(f"{key}: {val}" for key, val in value.items())
+    return str(value)
+
+
+def build_report_workbook(analysis: Analysis) -> Workbook:
+    workbook = Workbook()
+    summary = workbook.active
+    summary.title = "Summary"
+    summary.append(["Job title", analysis.job_title or "Untitled role"])
+    summary.append(["Candidates", len(analysis.candidates)])
+
+    if isinstance(analysis.requirements, dict):
+        required = analysis.requirements.get("required", [])
+        preferred = analysis.requirements.get("preferred", [])
+        req_text = f"Required: {', '.join(required)} | Preferred: {', '.join(preferred)}"
+    else:
+        req_text = ", ".join(analysis.requirements or [])
+    summary.append(["Requirements", req_text])
+
+    ranking = workbook.create_sheet("Candidate ranking")
+    ranking.append([
+        "Rank", "Candidate", "Email", "Overall", "Semantic", "Keyword", "Experience",
+        "Recommendation", "Skills", "Missing skills", "Insight"
+    ])
+
+    for rank, candidate in enumerate(sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True), 1):
+        ranking.append([
+            rank,
+            candidate.name,
+            candidate.email,
+            candidate.overall_score,
+            candidate.semantic_score,
+            candidate.keyword_score,
+            candidate.experience_score,
+            candidate.recommendation,
+            ", ".join(candidate.skills),
+            ", ".join(candidate.missing_skills),
+            candidate.insight,
+        ])
+
+    details = workbook.create_sheet("Candidate details")
+    details.append([
+        "Rank", "Candidate", "Email", "Phone", "Overall", "Semantic", "Keyword", "Experience",
+        "Recommendation", "Experience years", "Education", "Skills", "Missing skills",
+        "Projects", "Experience details", "Organizations", "Locations", "Insight"
+    ])
+    for rank, candidate in enumerate(sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True), 1):
+        entities = getattr(candidate, "entities", {}) or {}
+        details.append([
+            rank,
+            candidate.name,
+            candidate.email,
+            _to_export_string(entities.get("phones") or []),
+            candidate.overall_score,
+            candidate.semantic_score,
+            candidate.keyword_score,
+            candidate.experience_score,
+            candidate.recommendation,
+            entities.get("experience_years") if isinstance(entities.get("experience_years"), (int, float)) else 0,
+            candidate.education or "Not specified",
+            ", ".join(candidate.skills),
+            ", ".join(candidate.missing_skills),
+            _to_export_string(getattr(candidate, "projects", []) or []),
+            _to_export_string(getattr(candidate, "experience_details", []) or []),
+            _to_export_string(entities.get("organizations") or []),
+            _to_export_string(entities.get("locations") or []),
+            getattr(candidate, "insight", ""),
+        ])
+
+    for sheet in workbook.worksheets:
+        sheet.freeze_panes = "A2"
+        sheet.auto_filter.ref = sheet.dimensions
+        for column in sheet.columns:
+            width = min(max(len(str(cell.value or "")) for cell in column) + 2, 60)
+            sheet.column_dimensions[column[0].column_letter].width = width
+
+    return workbook
+
+
 @app.get("/api/v1/analyses", response_model=list[AnalysisOut])
 def list_analyses(db: Session = Depends(get_db)):
     analyses = db.scalars(select(Analysis).order_by(Analysis.created_at.desc())).all()
@@ -225,23 +323,8 @@ def download_report(analysis_id: str, db: Session = Depends(get_db)):
     analysis = db.scalar(select(Analysis).options(selectinload(Analysis.candidates)).where(Analysis.id == analysis_id))
     if not analysis: raise HTTPException(404, "Analysis not found.")
     if analysis.status != "completed": raise HTTPException(409, "Analysis is not complete.")
-    workbook = Workbook(); summary = workbook.active; summary.title = "Summary"
-    summary.append(["Job title", analysis.job_title or "Untitled role"]); summary.append(["Candidates", len(analysis.candidates)])
-    
-    # Handle requirements in new dict format
-    if isinstance(analysis.requirements, dict):
-        req_text = f"Required: {', '.join(analysis.requirements.get('required', []))} | Preferred: {', '.join(analysis.requirements.get('preferred', []))}"
-    else:
-        req_text = ", ".join(analysis.requirements or [])
-    summary.append(["Requirements", req_text])
-    ranking = workbook.create_sheet("Candidate ranking")
-    ranking.append(["Rank", "Candidate", "Email", "Overall", "Semantic", "Keyword", "Experience", "Recommendation", "Skills", "Missing skills", "Insight"])
-    for rank, candidate in enumerate(sorted(analysis.candidates, key=lambda item: item.overall_score, reverse=True), 1):
-        ranking.append([rank, candidate.name, candidate.email, candidate.overall_score, candidate.semantic_score, candidate.keyword_score, candidate.experience_score, candidate.recommendation, ", ".join(candidate.skills), ", ".join(candidate.missing_skills), candidate.insight])
-    for sheet in workbook.worksheets:
-        sheet.freeze_panes = "A2"; sheet.auto_filter.ref = sheet.dimensions
-        for column in sheet.columns:
-            sheet.column_dimensions[column[0].column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 50)
+
+    workbook = build_report_workbook(analysis)
     from io import BytesIO
     buffer = BytesIO(); workbook.save(buffer); buffer.seek(0)
     return StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="recruitai-{analysis_id}.xlsx"'})

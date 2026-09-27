@@ -4,10 +4,11 @@ from typing import Optional, Dict
 from .database import SessionLocal
 from .models import Analysis, Candidate
 from .nlp import (
-    extract_entities, extract_pdf_text, extract_skills, infer_name, 
-    recommendation, semantic_similarities, extract_jd_requirements, 
+    extract_entities, extract_pdf_text, extract_skills, infer_name,
+    recommendation, semantic_similarities, extract_jd_requirements,
     calculate_composite_score, extract_projects, extract_education, extract_experience_details,
-    extract_candidate_name_tiered, extract_candidate_name_production, extract_resume_data_ollama
+    extract_candidate_name_tiered, extract_candidate_name_production, extract_resume_data_ollama,
+    normalize_skill_term
 )
 
 
@@ -123,28 +124,36 @@ def analyse_job(analysis_id: str, upload_paths: list[tuple[str, str]]) -> None:
             if not isinstance(projects, list):
                 projects = []
             
-            # Calculate skill metrics
-            matching_required = skills & set(required_skills)
-            matching_preferred = skills & set(preferred_skills)
-            matching_all = skills & job_skills
-            missing_required = sorted(set(required_skills) - skills)
-            missing_preferred = sorted(set(preferred_skills) - skills)
+            # Calculate skill metrics using canonical skill normalization for a cleaner match.
+            normalized_skills = {normalize_skill_term(skill) for skill in skills}
+            normalized_required = {normalize_skill_term(skill) for skill in required_skills}
+            normalized_preferred = {normalize_skill_term(skill) for skill in preferred_skills}
+            matching_required = sorted(normalized_skills & normalized_required)
+            matching_preferred = sorted(normalized_skills & normalized_preferred)
+            matching_all = sorted(normalized_skills & (normalized_required | normalized_preferred))
+            missing_required = sorted(normalized_required - normalized_skills)
+            missing_preferred = sorted(normalized_preferred - normalized_skills)
             
             # Skill coverage score (weighted more heavily for required skills)
-            if required_skills:
-                required_coverage = len(matching_required) / len(required_skills) * 100
+            if normalized_required:
+                required_coverage = (len(matching_required) / len(normalized_required)) * 100
             else:
-                required_coverage = 100  # No required skills means full coverage
+                required_coverage = 100
             
-            if preferred_skills:
-                preferred_coverage = len(matching_preferred) / len(preferred_skills) * 50  # Preferred skills count half
+            if normalized_preferred:
+                preferred_coverage = (len(matching_preferred) / len(normalized_preferred)) * 50
             else:
                 preferred_coverage = 0
             
             skill_coverage = min(100, required_coverage + preferred_coverage)
             
-            # Semantic fit score (normalized)
-            semantic_fit = round(similarity * 100)
+            # Semantic fit score (normalized + JD skill-alignment boost)
+            semantic_fit_raw = similarity * 100
+            if normalized_required:
+                skill_alignment_boost = (len(matching_required) / len(normalized_required)) * 20
+            else:
+                skill_alignment_boost = 0
+            semantic_fit = min(100, round(semantic_fit_raw * 0.8 + skill_alignment_boost))
             
             # Experience match score (using Ollama-extracted years)
             years = int(experience_years)
