@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
     ollama_timeout: float = 15.0
+    # Email settings
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    sender_email: str = ""
+    sender_name: str = "RecruitAI"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

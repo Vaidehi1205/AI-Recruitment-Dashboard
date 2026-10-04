@@ -53,4 +53,10 @@ class Candidate(Base):
     recommendation: Mapped[str] = mapped_column(String(32))
     insight: Mapped[str] = mapped_column(Text)
     requires_manual_name_entry: Mapped[bool] = mapped_column(Boolean, default=False)  # Boolean flag for manual name correction UI
+    is_shortlisted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)  # Track shortlist status
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False)  # Track if email was sent
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # Timestamp of email send
+    call_scheduled: Mapped[bool] = mapped_column(Boolean, default=False)  # Track if call is scheduled
+    call_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # Timestamp of call scheduling
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)  # Internal notes about candidate
     analysis: Mapped[Analysis] = relationship(back_populates="candidates")

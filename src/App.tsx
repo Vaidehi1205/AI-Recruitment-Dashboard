@@ -5,10 +5,12 @@ import NewAnalysis from './screens/NewAnalysis'
 import AiScanning from './screens/AiScanning'
 import Overview from './screens/Overview'
 import CandidateAnalysis from './screens/CandidateAnalysis'
+import ShortlistedCandidates from './screens/ShortlistedCandidates'
+import EmailPage from './screens/EmailPage'
 import { createAnalysis, pollAnalysis, downloadReport, type AnalysisResponse } from './utils/api'
 import { convertToCandidate } from './data/candidates'
 
-type Screen = 'analysis' | 'scanning' | 'overview' | 'candidate'
+type Screen = 'analysis' | 'scanning' | 'overview' | 'candidate' | 'shortlisted' | 'email'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('analysis')
@@ -58,6 +60,17 @@ export default function App() {
     setScreen('candidate')
   }
 
+  const handleSidebarTabChange = (tab: SidebarTab) => {
+    setSidebarTab(tab)
+    if (tab === 'shortlisted') {
+      setScreen('shortlisted')
+    } else if (tab === 'email') {
+      setScreen('email')
+    } else {
+      setScreen('overview')
+    }
+  }
+
   const handleBack = () => setScreen('overview')
 
   const handleExportReport = async () => {
@@ -99,15 +112,12 @@ export default function App() {
     <div className="flex h-screen bg-[#F7F8FA] overflow-hidden">
       <Sidebar
         activeTab={sidebarTab}
-        onTabChange={(tab) => {
-          setSidebarTab(tab)
-          if (screen === 'candidate') setScreen('overview')
-        }}
+        onTabChange={handleSidebarTabChange}
         onNewAnalysis={handleNewAnalysis}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar onNewAnalysis={handleNewAnalysis} onExportReport={handleExportReport} currentAnalysis={currentAnalysis} />
-        <main className="flex-1 overflow-y-auto min-h-0">
+        <main className="flex-1 overflow-y-auto min-h-0 p-8">
           {screen === 'overview' && (
             <Overview
               activeTab={sidebarTab}
@@ -121,6 +131,15 @@ export default function App() {
               candidate={convertToCandidate(selectedCandidate, currentAnalysis.id, jobRequirements)}
               onBack={handleBack}
             />
+          )}
+          {screen === 'shortlisted' && (
+            <ShortlistedCandidates
+              candidates={candidates}
+              currentAnalysisId={currentAnalysis?.id}
+            />
+          )}
+          {screen === 'email' && (
+            <EmailPage />
           )}
         </main>
       </div>

@@ -1,4 +1,4 @@
-export type SidebarTab = 'overview' | 'candidates' | 'job-analysis' | 'skills' | 'analytics'
+export type SidebarTab = 'overview' | 'candidates' | 'job-analysis' | 'skills' | 'analytics' | 'shortlisted' | 'email'
 
 interface SidebarProps {
   activeTab: SidebarTab
@@ -61,6 +61,25 @@ const NAV_ITEMS: { id: SidebarTab; label: string; icon: React.ReactNode }[] = [
         <circle cx="5.5" cy="7.5" r="1.5" fill="currentColor" opacity="0.7" />
         <circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" opacity="0.7" />
         <circle cx="12" cy="4.5" r="1.5" fill="currentColor" opacity="0.7" />
+      </svg>
+    ),
+  },
+  {
+    id: 'shortlisted',
+    label: 'Shortlisted',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M13.78 4.22a.75.75 0 010 1.06l-7 7a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 011.06-1.06L6 10.44l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: 'email',
+    label: 'Email',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <path d="M1 3.75l7 5.5 7-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     ),
   },

@@ -161,3 +161,121 @@ export async function pollAnalysis(
     poll()
   })
 }
+
+export async function updateCandidateShortlist(
+  candidateId: string,
+  isShortlisted: boolean,
+  notes?: string
+): Promise<CandidateResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/candidates/${candidateId}/shortlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_shortlisted: isShortlisted, notes })
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to update shortlist status')
+  }
+
+  return response.json()
+}
+
+export async function getShortlistedCandidates(analysisId: string): Promise<CandidateResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analyses/${analysisId}/shortlisted`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch shortlisted candidates')
+  }
+
+  return response.json()
+}
+
+export async function getFilteredCandidates(
+  analysisId: string,
+  filters: {
+    min_score?: number
+    max_score?: number
+    recommendation?: string
+    skills_filter?: string[]
+    is_shortlisted?: boolean
+    email_sent?: boolean
+  }
+): Promise<CandidateResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analyses/${analysisId}/filtered-candidates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(filters)
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch filtered candidates')
+  }
+
+  return response.json()
+}
+
+export async function sendEmailToCandidates(
+  recipientIds?: string[],
+  templateType: 'procedure' | 'rejection' | 'custom' = 'procedure',
+  customSubject?: string,
+  customBody?: string
+): Promise<{ success: boolean; message: string; sent_count: number; failed_count: number }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/candidates/send-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipient_ids: recipientIds,
+      template_type: templateType,
+      custom_subject: customSubject,
+      custom_body: customBody
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to send emails')
+  }
+
+  return response.json()
+}
+
+export async function scheduleCall(
+  candidateId: string,
+  scheduledAt?: string,
+  notes?: string
+): Promise<CandidateResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/candidates/${candidateId}/schedule-call`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ candidate_id: candidateId, scheduled_at: scheduledAt, notes })
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to schedule call')
+  }
+
+  return response.json()
+}
+
+export async function downloadShortlistedReport(analysisId: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analyses/${analysisId}/shortlisted-report.xlsx`)
+
+  if (!response.ok) {
+    throw new Error('Failed to download shortlisted report')
+  }
+
+  return response.blob()
+}
+
+export async function getStrongMatches(analysisId?: string): Promise<CandidateResponse[]> {
+  const url = analysisId
+    ? `${API_BASE_URL}/api/v1/candidates/strong-matches?analysis_id=${analysisId}`
+    : `${API_BASE_URL}/api/v1/candidates/strong-matches`
+
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch strong matches')
+  }
+
+  return response.json()
+}
