@@ -265,6 +265,9 @@ def analyse_job(analysis_id: str, upload_paths: list[tuple[str, str]]) -> None:
             
             insight = " | ".join(insight_parts)
             
+            # Auto-shortlist candidates scoring above 75%
+            is_shortlisted = True if overall > 75 else False
+
             db.add(Candidate(
                 analysis_id=analysis.id, filename=filename, stored_filename=Path(path).name, name=candidate_name,
                 email=(entities.get("emails") or [None])[0], text=text, skills=sorted(skills),
@@ -275,6 +278,7 @@ def analyse_job(analysis_id: str, upload_paths: list[tuple[str, str]]) -> None:
                 overall_score=overall,
                 recommendation=score_label, insight=insight,
                 requires_manual_name_entry=requires_manual_entry,
+                is_shortlisted=is_shortlisted,
             ))
             
             analysis.phase_completed += 1

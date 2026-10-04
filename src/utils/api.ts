@@ -54,6 +54,8 @@ export interface CandidateResponse {
   overall_score: number
   recommendation: string
   insight: string
+  is_shortlisted: boolean
+  email_sent: boolean
   entities: {
     emails: string[]
     phones: string[]

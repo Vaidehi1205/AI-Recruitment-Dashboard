@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Download, Mail, Phone, CheckCircle, AlertCircle } from 'lucide-react'
+import { sendEmailToCandidates, downloadShortlistedReport } from '../utils/api'
 import type { Candidate } from '../data/candidates'
 
 interface ShortlistedCandidatesProps {
@@ -14,8 +15,15 @@ export default function ShortlistedCandidates({ candidates, currentAnalysisId }:
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Filter only shortlisted candidates
-    const filtered = candidates.filter(c => c.recommendation === 'Strong Match')
+    const filtered = candidates.filter(candidate => {
+      if (candidate.isShortlisted !== undefined) {
+        return candidate.isShortlisted
+      }
+
+      // Backward compatibility for older data that only stored recommendation text.
+      return candidate.recommendation === 'Strong Match'
+    })
+
     setShortlisted(filtered)
   }, [candidates])
 
@@ -40,12 +48,7 @@ export default function ShortlistedCandidates({ candidates, currentAnalysisId }:
   const downloadExcel = async () => {
     if (!currentAnalysisId) return
     try {
-      const response = await fetch(
-        `/api/v1/analyses/${currentAnalysisId}/shortlisted-report.xlsx`
-      )
-      if (!response.ok) throw new Error('Download failed')
-      
-      const blob = await response.blob()
+      const blob = await downloadShortlistedReport(currentAnalysisId)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -67,16 +70,7 @@ export default function ShortlistedCandidates({ candidates, currentAnalysisId }:
 
     setLoading(true)
     try {
-      const response = await fetch('/api/v1/candidates/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient_ids: Array.from(selectedCandidates),
-          template_type: 'procedure'
-        })
-      })
-
-      const result = await response.json()
+      const result = await sendEmailToCandidates(Array.from(selectedCandidates), 'procedure')
       if (result.success) {
         alert(`Emails sent successfully to ${result.sent_count} candidates`)
         // Update email status

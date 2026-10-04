@@ -41,6 +41,12 @@ class EmailService:
                     "success": False,
                     "message": "Email service not configured. Set SMTP_USER and SMTP_PASSWORD in .env"
                 }
+            if not settings.sender_email:
+                logger.error("Email service not configured. Sender email missing.")
+                return {
+                    "success": False,
+                    "message": "Email service not configured. Set SENDER_EMAIL in .env"
+                }
             
             # Create message
             msg = MIMEMultipart("alternative")
@@ -57,10 +63,18 @@ class EmailService:
             
             # Send email
             logger.info(f"Attempting to send email to {recipient_email} via {settings.smtp_server}:{settings.smtp_port}")
-            with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(settings.smtp_user, settings.smtp_password)
-                server.sendmail(settings.sender_email, recipient_email, msg.as_string())
+            # Use SSL if SMTP port is the implicit SSL port (465), otherwise use STARTTLS
+            if settings.smtp_port == 465:
+                with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
+                    server.login(settings.smtp_user, settings.smtp_password)
+                    server.sendmail(settings.sender_email, [recipient_email], msg.as_string())
+            else:
+                with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(settings.smtp_user, settings.smtp_password)
+                    server.sendmail(settings.sender_email, [recipient_email], msg.as_string())
             
             logger.info(f"Email sent successfully to {recipient_email}")
             return {
@@ -69,19 +83,19 @@ class EmailService:
             }
             
         except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP authentication failed for user {settings.smtp_user}: {str(e)}")
+            logger.exception("SMTP authentication failed")
             return {
                 "success": False,
                 "message": "SMTP authentication failed. Check SMTP_USER and SMTP_PASSWORD."
             }
         except smtplib.SMTPException as e:
-            logger.error(f"SMTP error: {str(e)}")
+            logger.exception("SMTP error occurred")
             return {
                 "success": False,
                 "message": f"SMTP error: {str(e)}"
             }
         except Exception as e:
-            logger.error(f"Error sending email to {recipient_email}: {str(e)}")
+            logger.exception("Unexpected error sending email")
             return {
                 "success": False,
                 "message": f"Error sending email: {str(e)}"

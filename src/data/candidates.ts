@@ -18,6 +18,8 @@ export interface Candidate {
   email?: string | null
   filename?: string
   analysisId?: string
+  isShortlisted?: boolean
+  emailSent?: boolean
   experienceDetails?: any[]
   jobRequirements?: {
     required: string[]
@@ -324,6 +326,8 @@ export function convertToCandidate(response: CandidateResponse, analysisId?: str
     email: response.email,
     filename: response.filename,
     analysisId,
+    isShortlisted: response.is_shortlisted ?? false,
+    emailSent: response.email_sent ?? false,
     experienceDetails: response.experience_details,
     jobRequirements,
     entities: response.entities,

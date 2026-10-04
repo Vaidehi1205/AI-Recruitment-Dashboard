@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Send, Copy, Check, AlertCircle } from 'lucide-react'
+import { sendEmailToCandidates } from '../utils/api'
 
 interface EmailTemplate {
   name: string
@@ -84,19 +85,13 @@ export default function EmailPage({ onSendEmail }: EmailPageProps) {
 
     setSending(true)
     try {
-      // Send via API
-      const response = await fetch('/api/v1/candidates/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient_ids: undefined,
-          template_type: selectedTemplate === 'custom' ? 'custom' : selectedTemplate,
-          custom_subject: selectedTemplate === 'custom' ? subject : undefined,
-          custom_body: selectedTemplate === 'custom' ? body : undefined
-        })
-      })
+      const result = await sendEmailToCandidates(
+        undefined,
+        selectedTemplate === 'custom' ? 'custom' : (selectedTemplate as any),
+        selectedTemplate === 'custom' ? subject : undefined,
+        selectedTemplate === 'custom' ? body : undefined
+      )
 
-      const result = await response.json()
       if (result.success) {
         setMessage({ type: 'success', text: `Emails sent successfully! (${result.sent_count} sent)` })
         setRecipientEmails('')
