@@ -140,8 +140,37 @@ function SkillPill({ skill, present }: { skill: string; present: boolean }) {
   )
 }
 
+function matchesCandidateSearch(candidate: Candidate, query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return true
+
+  const searchableText = [
+    candidate.name,
+    candidate.title,
+    candidate.location,
+    candidate.recommendation,
+    ...candidate.skills,
+  ].join(' ').toLowerCase()
+
+  return searchableText.includes(normalizedQuery)
+}
+
 export default function Overview({ activeTab, candidates, onSelectCandidate, currentAnalysis }: OverviewProps) {
+  const [candidateQuery, setCandidateQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [recommendationFilter, setRecommendationFilter] = useState<'all' | Candidate['recommendation']>('all')
+  const [minMatch, setMinMatch] = useState(0)
+
   const topCandidates = candidates.slice(0, 5)
+  const filteredCandidates = candidates.filter((candidate) => {
+    const matchesSearch = matchesCandidateSearch(candidate, candidateQuery)
+    const matchesRecommendation =
+      recommendationFilter === 'all' || candidate.recommendation === recommendationFilter
+    const matchesMinMatch = candidate.match >= minMatch
+    return matchesSearch && matchesRecommendation && matchesMinMatch
+  })
+
+  const activeFilterCount = (recommendationFilter !== 'all' ? 1 : 0) + (minMatch > 0 ? 1 : 0)
   
   // Calculate derived data from real candidates
   const strongMatches = candidates.filter(c => c.recommendation === 'Strong Match').length
@@ -353,12 +382,16 @@ export default function Overview({ activeTab, candidates, onSelectCandidate, cur
           <div className="px-5 py-4 border-b border-[#F3F4F6] flex items-center justify-between">
             <div>
               <h3 className="text-[14px] font-700 text-[#111827]">Candidate Ranking</h3>
-              <p className="text-[12px] text-[#9CA3AF] mt-0.5">Sorted by overall match score</p>
+              <p className="text-[12px] text-[#9CA3AF] mt-0.5">
+                {filteredCandidates.length} of {candidates.length} candidates shown
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
                 <input
                   type="text"
+                  value={candidateQuery}
+                  onChange={(event) => setCandidateQuery(event.target.value)}
                   placeholder="Search candidates..."
                   className="w-48 pl-8 pr-3 py-1.5 text-[12px] border border-[#E5E7EB] rounded-lg focus:outline-none focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]"
                 />
@@ -367,12 +400,70 @@ export default function Overview({ activeTab, candidates, onSelectCandidate, cur
                   <path d="M10 10l-1.5-1.5" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </div>
-              <button className="flex items-center gap-1.5 text-[12px] text-[#6B7280] bg-[#F7F8FA] px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M1 3h10M3 6h6M5 9h2" stroke="#6B7280" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-                Filter
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowFilters((current) => !current)}
+                  className="flex items-center gap-1.5 text-[12px] text-[#6B7280] bg-[#F7F8FA] px-3 py-1.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M1 3h10M3 6h6M5 9h2" stroke="#6B7280" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                </button>
+
+                {showFilters && (
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-lg z-20">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-600 uppercase tracking-wider text-[#9CA3AF] mb-1">
+                          Recommendation
+                        </label>
+                        <select
+                          value={recommendationFilter}
+                          onChange={(event) => setRecommendationFilter(event.target.value as 'all' | Candidate['recommendation'])}
+                          className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-[12px] text-[#374151] focus:outline-none focus:border-[#635BFF]"
+                        >
+                          <option value="all">All</option>
+                          <option value="Strong Match">Strong Match</option>
+                          <option value="Good Match">Good Match</option>
+                          <option value="Moderate Match">Moderate Match</option>
+                          <option value="Weak Match">Weak Match</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-600 uppercase tracking-wider text-[#9CA3AF]">
+                            Minimum match
+                          </label>
+                          <span className="text-[11px] font-600 text-[#374151]">{minMatch}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={minMatch}
+                          onChange={(event) => setMinMatch(Number(event.target.value))}
+                          className="w-full accent-[#635BFF]"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRecommendationFilter('all')
+                          setMinMatch(0)
+                        }}
+                        className="w-full rounded-lg border border-[#E5E7EB] bg-[#F7F8FA] px-2.5 py-1.5 text-[12px] font-600 text-[#374151] hover:bg-[#F3F4F6]"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -388,57 +479,63 @@ export default function Overview({ activeTab, candidates, onSelectCandidate, cur
 
           {/* Rows */}
           <div className="divide-y divide-[#F3F4F6]">
-            {candidates.map((c, idx) => (
-              <button
-                key={c.id}
-                onClick={() => onSelectCandidate(c.id)}
-                className="w-full grid grid-cols-[40px_1fr_100px_1fr_90px_110px] items-center px-5 py-3 hover:bg-[#F7F8FF] transition-all duration-200 text-left group hover-scale"
-              >
-                <span className="text-[12px] font-600 text-[#9CA3AF]">{idx + 1}</span>
+            {filteredCandidates.length === 0 ? (
+              <div className="px-5 py-8 text-center text-[12px] text-[#6B7280]">
+                No candidates match the current search and filter settings.
+              </div>
+            ) : (
+              filteredCandidates.map((c, idx) => (
+                <button
+                  key={c.id}
+                  onClick={() => onSelectCandidate(c.id)}
+                  className="w-full grid grid-cols-[40px_1fr_100px_1fr_90px_110px] items-center px-5 py-3 hover:bg-[#F7F8FF] transition-all duration-200 text-left group hover-scale"
+                >
+                  <span className="text-[12px] font-600 text-[#9CA3AF]">{idx + 1}</span>
 
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-7 h-7 flex-shrink-0 text-[11px] font-700 text-white rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: getInitialsColor(c.initials) }}
-                  >
-                    {c.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-600 text-[#111827] truncate group-hover:text-[#635BFF] transition-colors">
-                      {c.name}
-                    </div>
-                    <div className="text-[11px] text-[#9CA3AF] truncate">{c.title}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-[#F3F4F6] rounded-full h-1.5 max-w-[44px] overflow-hidden">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
                     <div
-                      className="h-full rounded-full"
-                      style={{ width: `${c.match}%`, backgroundColor: getMatchColor(c.match) }}
-                    />
+                      className="w-7 h-7 flex-shrink-0 text-[11px] font-700 text-white rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: getInitialsColor(c.initials) }}
+                    >
+                      {c.initials}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-600 text-[#111827] truncate group-hover:text-[#635BFF] transition-colors">
+                        {c.name}
+                      </div>
+                      <div className="text-[11px] text-[#9CA3AF] truncate">{c.title}</div>
+                    </div>
                   </div>
-                  <span className="text-[12px] font-700" style={{ color: getMatchColor(c.match) }}>
-                    {c.match}%
-                  </span>
-                </div>
 
-                <div className="flex flex-wrap gap-1 pr-2">
-                  {c.skills.slice(0, 3).map((s) => (
-                    <span key={s} className="text-[10px] font-500 bg-[#F3F4F6] text-[#6B7280] px-1.5 py-0.5 rounded">
-                      {s}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-[#F3F4F6] rounded-full h-1.5 max-w-[44px] overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${c.match}%`, backgroundColor: getMatchColor(c.match) }}
+                      />
+                    </div>
+                    <span className="text-[12px] font-700" style={{ color: getMatchColor(c.match) }}>
+                      {c.match}%
                     </span>
-                  ))}
-                  {c.skills.length > 3 && (
-                    <span className="text-[10px] text-[#9CA3AF]">+{c.skills.length - 3}</span>
-                  )}
-                </div>
+                  </div>
 
-                <span className="text-[12px] text-[#6B7280]">{c.experience}</span>
+                  <div className="flex flex-wrap gap-1 pr-2">
+                    {c.skills.slice(0, 3).map((s) => (
+                      <span key={s} className="text-[10px] font-500 bg-[#F3F4F6] text-[#6B7280] px-1.5 py-0.5 rounded">
+                        {s}
+                      </span>
+                    ))}
+                    {c.skills.length > 3 && (
+                      <span className="text-[10px] text-[#9CA3AF]">+{c.skills.length - 3}</span>
+                    )}
+                  </div>
 
-                <RecommendationBadge rec={c.recommendation} />
-              </button>
-            ))}
+                  <span className="text-[12px] text-[#6B7280]">{c.experience}</span>
+
+                  <RecommendationBadge rec={c.recommendation} />
+                </button>
+              ))
+            )}
           </div>
         </div>
 

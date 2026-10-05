@@ -557,21 +557,17 @@ def send_email_to_candidates(email_request: SendEmailIn, db: Session = Depends(g
             failed_count=0
         )
     
-    sent_count = 0
-    failed_count = 0
-    errors = []
-    
+    email_payloads = []
+    seen_emails = set()
     for candidate in candidates:
         if not candidate.email:
-            failed_count += 1
-            errors.append({
-                "candidate_id": candidate.id,
-                "candidate_name": candidate.name,
-                "error": "No email address on file"
-            })
             continue
-        
-        # Determine template
+
+        normalized_email = candidate.email.strip().lower()
+        if normalized_email in seen_emails:
+            continue
+        seen_emails.add(normalized_email)
+
         if email_request.template_type == "procedure":
             template = EmailService.get_procedure_email_template(candidate.name)
         elif email_request.template_type == "rejection":
@@ -583,36 +579,58 @@ def send_email_to_candidates(email_request: SendEmailIn, db: Session = Depends(g
                 "html_body": email_request.custom_html_body
             }
         else:
+            continue
+
+        email_payloads.append({
+            "candidate_id": candidate.id,
+            "candidate_name": candidate.name,
+            "recipient_email": candidate.email,
+            "subject": template["subject"],
+            "body": template["body"],
+            "html_body": template.get("html_body"),
+        })
+
+    result = EmailService.send_emails(email_payloads)
+    sent_count = 0
+    failed_count = 0
+    errors = []
+
+    for item in email_payloads:
+        candidate = db.scalar(select(Candidate).where(Candidate.id == item["candidate_id"]))
+        if not candidate:
+            continue
+
+        if item["recipient_email"] in [error.get("candidate_email") for error in result.get("errors", [])]:
             failed_count += 1
             errors.append({
                 "candidate_id": candidate.id,
                 "candidate_name": candidate.name,
-                "error": "Unknown template type"
+                "error": next(
+                    error["error"] for error in result.get("errors", []) if error.get("candidate_email") == item["recipient_email"]
+                )
             })
             continue
-        
-        # Send email
-        result = EmailService.send_email(
-            recipient_email=candidate.email,
-            recipient_name=candidate.name,
-            subject=template["subject"],
-            body=template["body"],
-            html_body=template.get("html_body")
+
+        candidate.email_sent = True
+        candidate.email_sent_at = datetime.utcnow()
+        sent_count += 1
+
+    if email_request.recipient_ids is None:
+        for candidate in candidates:
+            if candidate.email and candidate.email_sent:
+                candidate.email_sent = True
+
+    db.commit()
+
+    if not email_payloads:
+        return EmailResponseOut(
+            success=False,
+            message="No valid recipient emails found to send emails to.",
+            sent_count=0,
+            failed_count=len(candidates) - len(email_payloads),
+            errors=[]
         )
-        
-        if result["success"]:
-            candidate.email_sent = True
-            candidate.email_sent_at = datetime.utcnow()
-            db.commit()
-            sent_count += 1
-        else:
-            failed_count += 1
-            errors.append({
-                "candidate_id": candidate.id,
-                "candidate_name": candidate.name,
-                "error": result["message"]
-            })
-    
+
     return EmailResponseOut(
         success=sent_count > 0,
         message=f"Sent {sent_count} emails successfully" + (f"; {failed_count} failed" if failed_count > 0 else ""),
