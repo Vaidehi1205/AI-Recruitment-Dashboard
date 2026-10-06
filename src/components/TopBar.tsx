@@ -103,7 +103,7 @@ export default function TopBar({ onNewAnalysis, onExportReport, currentAnalysis 
                   </svg>
                 </div>
                 <p className="text-[14px] font-600 text-[#111827] mb-1">Recruitment report generated successfully</p>
-                <p className="text-[12px] text-[#9CA3AF]">recruitment_report.xlsx</p>
+                <p className="text-[12px] text-[#9CA3AF]">hiresense-ai-report.xlsx</p>
               </div>
             ) : (
               <>

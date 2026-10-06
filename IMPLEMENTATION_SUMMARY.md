@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-Successfully implemented all 5 requested features for the AI Recruitment Dashboard with full backend and frontend support, database migrations, and comprehensive documentation.
+Successfully implemented all 5 requested features for the HireSense AI with full backend and frontend support, database migrations, and comprehensive documentation.
 
 ---
 
@@ -194,7 +194,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
 SENDER_EMAIL=your-email@gmail.com
-SENDER_NAME=RecruitAI
+SENDER_NAME=HireSense AI
 ```
 
 ### Optional (with defaults)
@@ -430,7 +430,7 @@ Beyond the original request:
 
 ## 🎉 Summary
 
-The AI Recruitment Dashboard now has professional-grade candidate management features including shortlisting, email outreach, advanced filtering, and comprehensive reporting. The implementation follows best practices for security, performance, and user experience.
+The HireSense AI now has professional-grade candidate management features including shortlisting, email outreach, advanced filtering, and comprehensive reporting. The implementation follows best practices for security, performance, and user experience.
 
 All features are production-ready and fully documented for both technical and non-technical users.
 

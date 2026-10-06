@@ -1,1 +1,1 @@
-"""RecruitAI backend package."""
+"""HireSense AI backend package."""

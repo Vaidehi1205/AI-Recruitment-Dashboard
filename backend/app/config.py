@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     sender_email: str = ""
-    sender_name: str = "RecruitAI"
+    sender_name: str = "HireSense AI"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

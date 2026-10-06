@@ -109,7 +109,7 @@ def send_email_to_candidates(email_request: SendEmailIn, db: Session = Depends(g
             template = EmailService.get_rejection_email_template(candidate.name)
         elif email_request.template_type == "custom":
             template = {
-                "subject": email_request.custom_subject or "Message from RecruitAI",
+                "subject": email_request.custom_subject or "Message from HireSense AI",
                 "body": email_request.custom_body or "",
                 "html_body": email_request.custom_html_body
             }
@@ -229,7 +229,7 @@ def download_shortlisted_report(analysis_id: str, db: Session = Depends(get_db))
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="recruitai-shortlisted-{analysis_id}.xlsx"'}
+        headers={"Content-Disposition": f'attachment; filename="hiresense-ai-shortlisted-{analysis_id}.xlsx"'}
     )
 
 

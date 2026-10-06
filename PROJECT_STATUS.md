@@ -1,4 +1,4 @@
-# AI Recruitment Dashboard - Project Status
+# HireSense AI - Project Status
 
 ## ✅ Current Status: FULLY FUNCTIONAL
 

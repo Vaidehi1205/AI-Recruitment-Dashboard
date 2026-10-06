@@ -1,6 +1,6 @@
 Create a polished, production-quality desktop web application called:
 
-"AI Powered Recruiter Dashboard"
+"HireSense AI"
 
 This is a focused AI recruitment dashboard for recruiters. It allows a recruiter to:
 
@@ -145,7 +145,7 @@ SCREEN 1 — NEW ANALYSIS
 Create a welcoming analysis setup screen.
 
 Header:
-"AI Powered Recruiter Dashboard"
+"HireSense AI"
 
 Subtitle:
 "Analyze and rank candidates using AI-powered resume matching."

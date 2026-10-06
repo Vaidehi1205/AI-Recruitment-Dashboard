@@ -1,4 +1,4 @@
-# RecruitAI API
+# HireSense AI API
 
 FastAPI service for bulk PDF resume analysis. It accepts one job description plus **1–60 PDF resumes**, with a **5 MB limit per file**. Results are asynchronous: create an analysis, poll it until `completed`, then read ranked candidates or download an Excel report.
 

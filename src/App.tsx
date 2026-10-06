@@ -80,7 +80,7 @@ export default function App() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `recruitai-${currentAnalysis.id}.xlsx`
+      a.download = `hiresense-ai-${currentAnalysis.id}.xlsx`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

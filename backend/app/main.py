@@ -33,7 +33,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
 
-app = FastAPI(title="RecruitAI API", version="1.0.0", docs_url=None)
+app = FastAPI(title="HireSense AI API", version="1.0.0", docs_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:8443", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:8443"],
@@ -378,7 +378,7 @@ def download_report(analysis_id: str, db: Session = Depends(get_db)):
     workbook = build_report_workbook(analysis)
     from io import BytesIO
     buffer = BytesIO(); workbook.save(buffer); buffer.seek(0)
-    return StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="recruitai-{analysis_id}.xlsx"'})
+    return StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="hiresense-ai-{analysis_id}.xlsx"'})
 
 
 @app.get("/api/v1/candidates/{candidate_id}/resume")
@@ -574,7 +574,7 @@ def send_email_to_candidates(email_request: SendEmailIn, db: Session = Depends(g
             template = EmailService.get_rejection_email_template(candidate.name)
         elif email_request.template_type == "custom":
             template = {
-                "subject": email_request.custom_subject or "Message from RecruitAI",
+                "subject": email_request.custom_subject or "Message from HireSense AI",
                 "body": email_request.custom_body or "",
                 "html_body": email_request.custom_html_body
             }
@@ -716,7 +716,7 @@ def download_shortlisted_report(analysis_id: str, db: Session = Depends(get_db))
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="recruitai-shortlisted-{analysis_id}.xlsx"'}
+        headers={"Content-Disposition": f'attachment; filename="hiresense-ai-shortlisted-{analysis_id}.xlsx"'}
     )
 
 

@@ -68,5 +68,5 @@ export function generateExcelReport() {
   XLSX.utils.book_append_sheet(wb, jobAnalysisWs, 'Job Analysis')
 
   // Generate and download
-  XLSX.writeFile(wb, 'recruitment_report.xlsx')
+  XLSX.writeFile(wb, 'hiresense-ai-report.xlsx')
 }

@@ -1,8 +1,8 @@
-# AI Recruitment Dashboard - Project Documentation
+# HireSense AI - Project Documentation
 
 ## Project Overview
 
-AI Recruitment Dashboard, also called RecruitAI in the application UI, is an AI-powered recruitment platform for analyzing and ranking candidates against a job description. It allows a recruiter to upload or paste a job description, upload multiple PDF resumes, watch the processing progress in real time, review ranked candidates, shortlist strong matches, export reports, and send candidate outreach emails.
+HireSense AI is an AI-powered recruitment platform for analyzing and ranking candidates against a job description. It allows a recruiter to upload or paste a job description, upload multiple PDF resumes, watch the processing progress in real time, review ranked candidates, shortlist strong matches, export reports, and send candidate outreach emails.
 
 The project is split into a React frontend and a FastAPI backend. The frontend provides the recruiter dashboard experience, while the backend handles PDF processing, resume parsing, scoring, persistence, Excel report generation, and email delivery.
 
@@ -329,7 +329,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
 SENDER_EMAIL=your-email@gmail.com
-SENDER_NAME=RecruitAI
+SENDER_NAME=HireSense AI
 ```
 
 For Gmail, an app password is usually required.
@@ -378,4 +378,4 @@ These appear to be active local changes and were not modified while creating thi
 
 ## Conclusion
 
-AI Recruitment Dashboard is a full-stack recruiting tool that combines document processing, NLP, semantic matching, structured candidate scoring, recruiter workflow management, and email outreach. It is suitable for local development with SQLite, Docker-based development with PostgreSQL, and can be extended toward production with stronger authentication, background job infrastructure, retention policies, and deployment hardening.
+HireSense AI is a full-stack recruiting tool that combines document processing, NLP, semantic matching, structured candidate scoring, recruiter workflow management, and email outreach. It is suitable for local development with SQLite, Docker-based development with PostgreSQL, and can be extended toward production with stronger authentication, background job infrastructure, retention policies, and deployment hardening.

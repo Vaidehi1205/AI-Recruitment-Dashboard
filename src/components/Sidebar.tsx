@@ -98,7 +98,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewAnalysis }: Sideb
             </svg>
           </div>
           <div>
-            <div className="text-[12px] font-700 text-[#111827] leading-tight">RecruitAI</div>
+            <div className="text-[12px] font-700 text-[#111827] leading-tight">HireSense AI</div>
             <div className="text-[10px] text-[#9CA3AF] font-400">Intelligent Hiring</div>
           </div>
         </div>

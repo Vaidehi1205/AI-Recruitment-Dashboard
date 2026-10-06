@@ -13,7 +13,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
 SENDER_EMAIL=your-email@gmail.com
-SENDER_NAME=RecruitAI
+SENDER_NAME=HireSense AI
 ```
 
 **Gmail Setup:**

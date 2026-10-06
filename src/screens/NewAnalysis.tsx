@@ -160,7 +160,7 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
               <path d="M7 1v2M7 11v2M1 7h2M11 7h2M3.22 3.22l1.41 1.41M9.37 9.37l1.41 1.41M10.78 3.22l-1.41 1.41M4.63 9.37l-1.41 1.41" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
             </svg>
           </div>
-          <span className="text-[13px] font-700 text-[#111827]">RecruitAI</span>
+          <span className="text-[13px] font-700 text-[#111827]">HireSense AI</span>
         </div>
         <div className="flex items-center gap-3">
           <button className="w-8 h-8 flex items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F7F8FA] transition-colors">
@@ -184,7 +184,7 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
             AI-Powered Analysis
           </div>
           <h1 className="text-[30px] font-800 text-[#111827] tracking-tight leading-tight mb-2">
-            AI Powered Recruiter Dashboard
+            HireSense AI
           </h1>
           <p className="text-[15px] text-[#6B7280] font-400">
             Analyze and rank candidates using AI-powered resume matching.
