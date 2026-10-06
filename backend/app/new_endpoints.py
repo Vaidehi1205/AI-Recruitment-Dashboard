@@ -189,8 +189,7 @@ def download_shortlisted_report(analysis_id: str, db: Session = Depends(get_db))
     # Headers
     sheet.append([
         "Rank", "Candidate", "Email", "Phone", "Overall Score", "Semantic", "Keyword", "Experience",
-        "Recommendation", "Education", "Skills", "Missing Skills", "Experience Years",
-        "Organizations", "Location", "Notes", "Email Sent", "Call Scheduled"
+        "Recommendation", "Education", "Skills", "Missing Skills", "Experience Years", "Location"
     ])
     
     # Data rows
@@ -212,11 +211,7 @@ def download_shortlisted_report(analysis_id: str, db: Session = Depends(get_db))
             ", ".join(candidate.skills),
             ", ".join(candidate.missing_skills),
             entities.get("experience_years", ""),
-            _to_export_string(entities.get("organizations", [])),
             contact_fields["location"],
-            candidate.notes or "",
-            "Yes" if candidate.email_sent else "No",
-            "Yes" if candidate.call_scheduled else "No",
         ])
     
     # Format sheet

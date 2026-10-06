@@ -461,6 +461,37 @@ def extract_pdf_text(path: str) -> str:
         sanitized_ocr = sanitize_pdf_text(ocr_combined)
         return normalize_text(sanitized_ocr)
 
+
+def extract_pdf_text_cached(path: str, cache_dir: Optional[str] = None) -> str:
+    """Cache PDF text extraction by short file hash to avoid repeated OCR on same files.
+
+    Cache files are stored under `cache_dir` or `settings.upload_dir/.extraction_cache`.
+    """
+    try:
+        file_hash = generate_file_hash(path)
+    except Exception:
+        # Fallback to no-cache if hash generation fails
+        return extract_pdf_text(path)
+
+    base_cache = Path(cache_dir) if cache_dir else (settings.upload_dir / ".extraction_cache")
+    base_cache.mkdir(parents=True, exist_ok=True)
+    cache_file = base_cache / f"{file_hash}.txt"
+
+    # Return cached text if available
+    if cache_file.exists():
+        try:
+            return cache_file.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    # Perform extraction and write cache
+    text = extract_pdf_text(path)
+    try:
+        cache_file.write_text(text, encoding="utf-8")
+    except Exception:
+        pass
+    return text
+
 def extract_jd_pdf_text(path: str) -> str:
     """Extract text from Job Description PDF with OCR fallback, without resume-specific sanitization."""
     with fitz.open(path) as document:
@@ -552,6 +583,9 @@ def extract_skills(text: str) -> list[str]:
     for alias, canonical in CANONICAL_SKILL_MAPPING.items():
         if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", lower):
             found_canonical.add(canonical)
+
+    if not settings.enable_fuzzy_skill_matching:
+        return sorted(found_canonical, key=str.lower)
     
     # Layer 2: Extract potential skill terms that weren't matched exactly
     # This catches terms with variations not in our mapping
@@ -1661,6 +1695,9 @@ def extract_resume_data_ollama(raw_text: str, pdf_path: str) -> Dict:
     Deterministic Python logic handles skill canonicalization, date duration calculation,
     semantic matching, and ATS scoring.
     """
+    if not settings.enable_ollama_parser:
+        return extract_resume_data_fast(raw_text, pdf_path)
+
     try:
         import ollama
         import json
@@ -1793,10 +1830,12 @@ Return valid JSON matching the provided schema."""
         if not projects_list:
             projects_list = extract_projects(raw_text)
             
+        contact_entities = extract_entities(raw_text)
+
         return {
             "name": candidate_name,
-            "email": validated_data.email or (extract_entities(raw_text).get("emails") or [None])[0],
-            "phone": validated_data.phone or (extract_entities(raw_text).get("phones") or [None])[0],
+            "email": validated_data.email or (contact_entities.get("emails") or [None])[0],
+            "phone": validated_data.phone or (contact_entities.get("phones") or [None])[0],
             "requires_manual_entry": requires_manual_entry,
             "is_degraded_fallback": False,
             "experience_years": total_exp_years,
@@ -1844,3 +1883,46 @@ Return valid JSON matching the provided schema."""
                 "work_experience": [],
                 "notable_projects": []
             }
+
+
+def extract_resume_data_fast(raw_text: str, pdf_path: str) -> Dict:
+    """Fast local resume parser used by default for high-throughput processing."""
+    file_hash = generate_file_hash(pdf_path)
+    try:
+        skills = extract_skills(raw_text)
+        education = extract_education(raw_text)
+        entities = extract_entities(raw_text)
+        experience_years = float(entities.get("experience_years", 0) or 0)
+        if experience_years <= 0:
+            date_ranges = extract_work_dates(raw_text)
+            experience_years = calculate_total_experience(date_ranges)
+        name, req_manual = extract_candidate_name_production(raw_text, Path(pdf_path).name, pdf_path)
+
+        return {
+            "name": name,
+            "email": (entities.get("emails") or [None])[0],
+            "phone": (entities.get("phones") or [None])[0],
+            "requires_manual_entry": req_manual,
+            "is_degraded_fallback": True,
+            "experience_years": experience_years,
+            "education": education,
+            "skills": sorted({normalize_skill_term(s) for s in skills}),
+            "work_experience": extract_experience_details(raw_text),
+            "notable_projects": extract_projects(raw_text),
+            "entities": entities,
+        }
+    except Exception as fallback_err:
+        print(f"Fast extraction failed for {pdf_path}: {fallback_err}")
+        return {
+            "name": f"Unnamed Candidate ({file_hash})",
+            "email": None,
+            "phone": None,
+            "requires_manual_entry": True,
+            "is_degraded_fallback": True,
+            "experience_years": 0.0,
+            "education": "Not specified",
+            "skills": [],
+            "work_experience": [],
+            "notable_projects": [],
+            "entities": {"emails": [], "phones": [], "experience_years": 0, "organizations": [], "locations": []},
+        }

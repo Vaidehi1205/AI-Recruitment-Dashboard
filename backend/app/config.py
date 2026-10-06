@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
     ollama_timeout: float = 15.0
+    enable_ollama_parser: bool = False
+    enable_fuzzy_skill_matching: bool = False
+    # Worker pool configuration for extraction and analysis
+    extraction_max_workers: int | None = None
+    analysis_max_workers: int | None = None
     # Email settings
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
