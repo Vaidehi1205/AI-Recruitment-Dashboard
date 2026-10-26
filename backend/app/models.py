@@ -60,3 +60,105 @@ class Candidate(Base):
     call_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # Timestamp of call scheduling
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)  # Internal notes about candidate
     analysis: Mapped[Analysis] = relationship(back_populates="candidates")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    full_name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    module: Mapped[str] = mapped_column(String(50), default="admin_tpo")
+    role: Mapped[str] = mapped_column(String(50), default="tpo")
+    is_approved: Mapped[bool] = mapped_column(Boolean, default=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company_identifier: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    company_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    account_status: Mapped[str] = mapped_column(String(32), default="approved")
+    verification_document_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    verification_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    verification_document_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    verification_document_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    designation: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    institution_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    institution_identifier: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    full_name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    student_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    graduation_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cgpa: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    backlog_count: Mapped[int] = mapped_column(Integer, default=0)
+    skills: Mapped[str | None] = mapped_column(Text, nullable=True)
+    eligibility_status: Mapped[str] = mapped_column(String(32), default="review", index=True)
+    placement_status: Mapped[str] = mapped_column(String(32), default="not applied", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    sector: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AdminNotice(Base):
+    __tablename__ = "admin_notices"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title: Mapped[str] = mapped_column(String(255))
+    content: Mapped[str] = mapped_column(Text)
+    audience: Mapped[str] = mapped_column(String(100), default="All")
+    status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EligibilityRecord(Base):
+    __tablename__ = "eligibility_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    candidate_id: Mapped[str] = mapped_column(String(36), index=True)
+    job_id: Mapped[str] = mapped_column(String(36), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="review", index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    final_result: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    breakdown: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AdminNotification(Base):
+    __tablename__ = "admin_notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title: Mapped[str] = mapped_column(String(255))
+    message: Mapped[str] = mapped_column(Text)
+    audience: Mapped[str] = mapped_column(String(100), default="All")
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

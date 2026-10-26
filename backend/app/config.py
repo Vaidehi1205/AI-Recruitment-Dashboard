@@ -2,12 +2,18 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+REPO_DIR = BACKEND_DIR.parent
+
+
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./recruitai.db"
     upload_dir: Path = Path("./data/uploads")
     max_resumes_per_analysis: int = 60
     max_file_size_bytes: int = 5 * 1024 * 1024
     cors_origins: str = "http://localhost:5173,http://localhost:8443"
+    api_title: str = "HireSense AI API"
+    api_version: str = "1.0.0"
     embedding_model: str = "all-MiniLM-L6-v2"
     ocr_dpi: int = 200
     tesseract_cmd: str | None = None
@@ -28,7 +34,10 @@ class Settings(BaseSettings):
     sender_email: str = ""
     sender_name: str = "HireSense AI"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(REPO_DIR / ".env", BACKEND_DIR / ".env"),
+        extra="ignore",
+    )
 
     @property
     def allowed_origins(self) -> list[str]:

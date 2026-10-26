@@ -147,36 +147,8 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] flex flex-col">
-      {/* Header bar */}
-      <header className="h-14 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-8 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #635BFF 0%, #8B84FF 100%)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="3" fill="white" opacity="0.9" />
-              <path d="M7 1v2M7 11v2M1 7h2M11 7h2M3.22 3.22l1.41 1.41M9.37 9.37l1.41 1.41M10.78 3.22l-1.41 1.41M4.63 9.37l-1.41 1.41" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-            </svg>
-          </div>
-          <span className="text-[13px] font-700 text-[#111827]">HireSense AI</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F7F8FA] transition-colors">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1.5C5.515 1.5 3.5 3.515 3.5 6v2.5L2 10.5v.5h12v-.5L12.5 8.5V6C12.5 3.515 10.485 1.5 8 1.5Z" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinejoin="round" />
-              <path d="M6.5 11.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
-            </svg>
-          </button>
-          <div className="w-7 h-7 rounded-full bg-[#EEF0FF] flex items-center justify-center text-[11px] font-700 text-[#635BFF]">
-            JS
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-start px-6 py-10 max-w-6xl mx-auto w-full">
+    <div className="w-full">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center">
         {/* Hero text */}
         <div className="text-center mb-10 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 bg-[#EEF0FF] text-[#635BFF] text-[12px] font-600 px-3 py-1 rounded-full mb-4">
@@ -192,9 +164,9 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
         </div>
 
         {/* Two column cards */}
-        <div className="w-full grid grid-cols-2 gap-5 mb-6 h-[340px]" style={{ animationDelay: '0.1s' }}>
+        <div className="mb-6 grid w-full gap-5 lg:grid-cols-2" style={{ animationDelay: '0.1s' }}>
           {/* Job Description Card */}
-          <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden flex flex-col h-full" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+          <div className="flex min-h-[430px] flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-md bg-[#EEF0FF] flex items-center justify-center">
@@ -307,7 +279,7 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
           </div>
 
           {/* Resume Upload Card */}
-          <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden flex flex-col h-full" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+          <div className="flex min-h-[430px] flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-md bg-[#EEF0FF] flex items-center justify-center">
@@ -405,8 +377,8 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
         {files.length > 0 && (
           <div className="w-full bg-white rounded-xl border border-[#E5E7EB] p-5 mb-8 animate-fade-in-up" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 className="text-[14px] font-700 text-[#111827] mb-4">Resume Insights</h3>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="grid grid-cols-3 gap-4">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div className="bg-[#F7F8FA] p-3 rounded-lg border border-[#E5E7EB]">
                   <div className="text-[11px] font-600 text-[#6B7280] uppercase tracking-wider mb-1">Total Resumes</div>
                   <div className="text-[18px] font-700 text-[#111827]">{files.length}</div>
@@ -483,7 +455,7 @@ export default function NewAnalysis({ onAnalyze }: NewAnalysisProps) {
             <span>Candidate ranking</span>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -25,15 +25,38 @@ export default defineConfig(({ mode }) => {
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
     ],
     resolve: {
+      dedupe: ['react', 'react-dom', 'react-router-dom', 'lucide-react'],
       alias: {
         '@': path.resolve(import.meta.dirname, './src'),
+        react: path.resolve(import.meta.dirname, './node_modules/react'),
+        'react-dom': path.resolve(import.meta.dirname, './node_modules/react-dom'),
+        'react-router-dom': path.resolve(import.meta.dirname, './node_modules/react-router-dom'),
+        'lucide-react': path.resolve(import.meta.dirname, './node_modules/lucide-react'),
       },
     },
     server: {
       host: '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
-      watch: { ignored: ['**/.figma/**'] },
+      watch: {
+        ignored: [
+          '**/.figma/**',
+          '**/.git/**',
+          '**/node_modules/**',
+          '**/dist/**',
+          '**/backend/.venv/**',
+          '**/backend/__pycache__/**',
+          '**/backend/app/__pycache__/**',
+          '**/backend/.pytest_cache/**',
+          '**/backend/data/**',
+          '**/backend/recruitai.db',
+          '**/recruitai.db',
+          '**/Resumes/**',
+        ],
+      },
+      proxy: {
+        '/api': 'http://127.0.0.1:8000',
+      },
     },
     preview: {
       host: '0.0.0.0',

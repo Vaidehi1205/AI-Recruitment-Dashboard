@@ -21,7 +21,14 @@ from .config import settings
 DOCUMENT_TITLE_WORDS = {
     "resume", "curriculum", "vitae", "cv", "developer", "engineer", 
     "architect", "programmer", "manager", "lead", "senior", "junior", 
-    "mid-level", "contract", "intern", "profile", "summary", "experience"
+    "mid-level", "contract", "intern", "profile", "summary", "experience",
+    "software", "data", "scientist", "analyst", "consultant", "designer",
+    "experienced", "professional", "passionate", "results", "objective",
+    "resume", "name", "email", "phone", "contact", "address", "linkedin",
+    "github", "portfolio", "skills", "education", "work", "employment",
+    "history", "highly", "motivated", "seeking", "dedicated", "creative",
+    "innovative", "summary", "about", "myself", "references", "curriculum",
+    "vitae", "of", "the", "and", "for", "with",
 }
 
 NOISE_PATTERNS = [
@@ -608,7 +615,7 @@ def extract_noun_phrases(text: str) -> list[str]:
     """
     try:
         nlp = _spacy_model()
-        doc = nlp(text[:100_000])
+        doc = nlp(text[:30_000])
         
         # Extract noun phrases that are likely technical terms
         noun_phrases = []
@@ -989,7 +996,7 @@ def extract_entities(text: str) -> dict:
     
     try:
         nlp = _spacy_model()
-        doc = nlp(text[:100_000])
+        doc = nlp(text[:30_000])
         
         # Better filtering for organizations - exclude common non-org terms
         non_org_terms = {'multi-threading', 'design patterns', 'tdd', 'junit', 'jdo', 'jms', 'rmi', 
@@ -1161,6 +1168,9 @@ def is_valid_candidate_name(candidate_str: str) -> bool:
     
     if not (2 <= len(words) <= 4):
         return False
+
+    if " ".join(words) in {"john doe", "jane doe", "first last", "your name", "candidate name", "name here"}:
+        return False
         
     # Reject if any word matches document titles (e.g., "Senior Java Developer Resume")
     if any(w in DOCUMENT_TITLE_WORDS for w in words):
@@ -1171,62 +1181,44 @@ def is_valid_candidate_name(candidate_str: str) -> bool:
         if re.search(pat, candidate_str, re.IGNORECASE):
             return False
             
-    # Must contain only letters, hyphens, spaces, apostrophes
-    if not re.match(r"^[A-Za-z\s\-\']+$", clean):
+    # Support international names, hyphens, apostrophes, and middle initials.
+    if not all(re.fullmatch(r"(?:[^\W\d_]+|[^\W\d_]\.)+(?:[-'][^\W\d_]+)*", word) for word in clean.split()):
         return False
         
     return True
 
 
 def extract_name_local_font_size(pdf_path: str) -> str | None:
-    """Layout-aware font-size extraction with multi-column isolation."""
+    """Find a likely name from text lines near the top of the first PDF page."""
     try:
-        import pdfplumber
-        
-        with pdfplumber.open(pdf_path) as pdf:
-            if not pdf.pages:
+        with fitz.open(pdf_path) as document:
+            if len(document) == 0:
                 return None
-            page = pdf.pages[0]
-            top_threshold = page.height * 0.35
-            
-            # Filter chars in top 35%
-            chars = [c for c in page.chars if c["top"] <= top_threshold and c["text"].strip()]
-            if not chars:
-                return None
-                
-            # Group characters by font size
-            size_groups = {}
-            for c in chars:
-                sz = round(c["size"], 1)
-                size_groups.setdefault(sz, []).append(c)
-                
-            # Iterate through font sizes from largest to smallest
-            for sz in sorted(size_groups.keys(), reverse=True):
-                group_chars = size_groups[sz]
-                
-                # Sort spatially: vertical top first, then horizontal x0 left-to-right
-                group_chars.sort(key=lambda c: (round(c["top"], 1), c["x0"]))
-                
-                # Cluster characters into lines based on vertical proximity
-                lines = []
-                current_line = []
-                last_top = None
-                
-                for c in group_chars:
-                    if last_top is None or abs(c["top"] - last_top) < 3.0:
-                        current_line.append(c["text"])
-                    else:
-                        lines.append("".join(current_line))
-                        current_line = [c["text"]]
-                    last_top = c["top"]
-                if current_line:
-                    lines.append("".join(current_line))
-                    
-                # Test extracted lines for valid candidate names
-                for line in lines:
-                    sanitized = clean_text_line(line)
-                    if is_valid_candidate_name(sanitized):
-                        return sanitized.title()
+            page = document[0]
+            candidates = []
+            for block in page.get_text("dict").get("blocks", []):
+                for line in block.get("lines", []):
+                    spans = [span for span in line.get("spans", []) if span.get("text", "").strip()]
+                    if not spans:
+                        continue
+                    text = clean_text_line(" ".join(span["text"] for span in spans))
+                    top = min(span["bbox"][1] for span in spans)
+                    if top > page.rect.height * 0.4:
+                        continue
+                    # Cut off contact details or a role that shares the name's line.
+                    text = re.split(r"\s*(?:\||•|·|—|–)\s*", text, maxsplit=1)[0]
+                    words = text.split()
+                    if not (2 <= len(words) <= 4) or not is_valid_candidate_name(text):
+                        continue
+                    if not (text.isupper() or all(word[:1].isupper() for word in words)):
+                        continue
+                    font_size = max(float(span.get("size", 0)) for span in spans)
+                    # Larger, higher lines are more likely to be the candidate header.
+                    score = font_size - (top / max(page.rect.height, 1)) * 6
+                    candidates.append((score, top, text))
+            if candidates:
+                candidates.sort(key=lambda item: (-item[0], item[1]))
+                return candidates[0][2].title()
     except Exception:
         pass
     return None
@@ -1236,19 +1228,13 @@ def extract_name_local_spacy(pdf_path: str, raw_text: str) -> str | None:
     """Local spaCy NER with Title-Case normalization for ALL-CAPS text."""
     lines = [clean_text_line(line) for line in raw_text.split("\n") if line.strip()][:12]
     
-    for line in lines:
-        if not line or len(line.split()) < 2:
-            continue
-            
-        # Convert ALL CAPS to Title Case so spaCy NER recognizes the PERSON entity
-        formatted_line = line.title() if line.isupper() else line
-        doc = _spacy_model()(formatted_line)
-        
-        for ent in doc.ents:
-            if ent.label_ == "PERSON":
-                cleaned_ent = clean_text_line(ent.text)
-                if is_valid_candidate_name(cleaned_ent):
-                    return cleaned_ent.title()
+    # One model invocation is faster than running NER once per line.
+    header = "\n".join(line.title() if line.isupper() else line for line in lines)
+    for ent in _spacy_model()(header).ents:
+        if ent.label_ == "PERSON":
+            cleaned_ent = clean_text_line(ent.text)
+            if is_valid_candidate_name(cleaned_ent):
+                return cleaned_ent.title()
                     
     return None
 
@@ -1276,20 +1262,66 @@ def generate_file_hash(pdf_path: str) -> str:
 
 
 def extract_candidate_name_production(text: str, filename: str, pdf_path: str) -> tuple[str, bool]:
-    """100% Local Multi-Layer Extraction Engine."""
-    # Step 1: Layout & Font-Size Extraction (handles 80%+ of resumes)
+    """Extract the candidate name from the resume header, with slower fallbacks."""
+    # Explicit name labels are the strongest text-layer signal.
+    for raw_line in text.splitlines()[:20]:
+        line = clean_text_line(raw_line)
+        label_match = re.match(r"^\s*(?:full\s+)?(?:candidate\s+)?name\s*[:\-]\s*(.+)$", line, re.I)
+        if label_match:
+            candidate = re.split(r"\s*(?:\||•|·|—|–|,)\s*", label_match.group(1), maxsplit=1)[0].strip()
+            if is_valid_candidate_name(candidate):
+                return candidate.title(), False
+
+    # Use first-page position and type size to distinguish the name from body text.
     if pdf_path and Path(pdf_path).exists():
         name = extract_name_local_font_size(pdf_path)
         if name:
             return name, False
 
-    # Step 2: SpaCy NER with Title Case Normalization
+    # Then use likely name-shaped text in the opening lines only.
+    for raw_line in text.splitlines()[:8]:
+        line = clean_text_line(raw_line)
+        line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line)
+        line = re.sub(r"^(?:resume|curriculum vitae)\s+of\s+", "", line, flags=re.I)
+        line = re.split(r"\s*(?:\||•|·|—|–)\s*|\s{2,}", line, maxsplit=1)[0]
+        line = re.sub(r"[,;:]$", "", line).strip()
+        words = line.split()
+        for word_count in range(min(4, len(words)), 1, -1):
+            candidate = " ".join(words[:word_count]).strip(" ,;:-")
+            looks_like_name = candidate.isupper() or all(word[:1].isupper() for word in candidate.split())
+            if is_valid_candidate_name(candidate) and looks_like_name:
+                return candidate.title(), False
+
+    # Descriptive upload filenames are a cheap, useful fallback.
+    file_candidate = re.sub(r"[_-]+", " ", Path(filename).stem)
+    file_candidate = re.sub(r"\([^)]*\)|\[[^]]*\]", " ", file_candidate)
+    file_candidate = re.sub(r"^[0-9a-f]{8,}\s*", "", file_candidate, flags=re.I)
+    file_candidate = re.sub(r"^\d{1,4}\s+", "", file_candidate)
+    file_candidate = re.sub(r"\s+", " ", file_candidate).strip()
+    file_candidate = re.sub(r"^(?:resume|cv|curriculum vitae)\s+", "", file_candidate, flags=re.I)
+    file_words = file_candidate.split()
+    metadata_words = DOCUMENT_TITLE_WORDS | {
+        "cse", "it", "aiml", "mca", "bca", "btech", "be", "batch", "python", "java",
+        "javascript", "typescript", "react", "sql", "machine", "learning", "artificial",
+        "intelligence", "ai", "ml", "web", "backend", "frontend", "fullstack",
+    }
+    name_words = []
+    for word in file_words:
+        if word.lower().strip(".,()") in metadata_words or re.fullmatch(r"\d{2,4}", word):
+            break
+        name_words.append(word.strip(".,()"))
+    for word_count in range(min(4, len(name_words)), 1, -1):
+        possible_name = " ".join(name_words[:word_count]).strip()
+        if is_valid_candidate_name(possible_name):
+            return possible_name.title(), False
+
+    # NER remains a fallback and runs once for the whole header.
     if pdf_path and Path(pdf_path).exists():
         name = extract_name_local_spacy(pdf_path, text)
         if name:
             return name, False
 
-    # Step 3: SHA256 Hash Fallback for blank/template resumes
+    # Final fallback for blank/template resumes.
     if pdf_path and Path(pdf_path).exists():
         with open(pdf_path, "rb") as f:
             file_hash = hashlib.sha256(f.read()).hexdigest()[:8]
@@ -1759,6 +1791,7 @@ Return valid JSON matching the provided schema."""
         is_invalid_name = (
             not candidate_name or
             len(candidate_name) < 2 or
+            not is_valid_candidate_name(candidate_name) or
             name_lower in placeholder_names or
             any(ind in name_lower for ind in company_indicators) or
             any(ind in name_lower for ind in job_title_indicators) or
@@ -1766,9 +1799,9 @@ Return valid JSON matching the provided schema."""
         )
         
         if is_invalid_name:
-            file_hash = generate_file_hash(pdf_path)
-            candidate_name = f"Unnamed Candidate ({file_hash})"
-            requires_manual_entry = True
+            candidate_name, requires_manual_entry = extract_candidate_name_production(
+                raw_text, Path(pdf_path).name, pdf_path
+            )
             
         # 2. Python Skill Canonicalization (using 280+ mappings)
         raw_skills = [s.name for s in validated_data.skills if s.name]
@@ -1887,7 +1920,6 @@ Return valid JSON matching the provided schema."""
 
 def extract_resume_data_fast(raw_text: str, pdf_path: str) -> Dict:
     """Fast local resume parser used by default for high-throughput processing."""
-    file_hash = generate_file_hash(pdf_path)
     try:
         skills = extract_skills(raw_text)
         education = extract_education(raw_text)
@@ -1913,6 +1945,7 @@ def extract_resume_data_fast(raw_text: str, pdf_path: str) -> Dict:
         }
     except Exception as fallback_err:
         print(f"Fast extraction failed for {pdf_path}: {fallback_err}")
+        file_hash = generate_file_hash(pdf_path)
         return {
             "name": f"Unnamed Candidate ({file_hash})",
             "email": None,

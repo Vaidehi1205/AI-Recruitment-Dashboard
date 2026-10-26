@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import type { SidebarTab } from '../components/Sidebar'
 import type { Candidate } from '../data/candidates'
+import { Download } from 'lucide-react'
 import {
   getRecommendationColor,
   getMatchColor,
@@ -12,6 +13,7 @@ interface OverviewProps {
   candidates: Candidate[]
   onSelectCandidate: (id: string) => void
   currentAnalysis?: any
+  onExportReport?: () => void
 }
 
 function useCountUp(target: number, duration = 800) {
@@ -155,7 +157,7 @@ function matchesCandidateSearch(candidate: Candidate, query: string) {
   return searchableText.includes(normalizedQuery)
 }
 
-export default function Overview({ activeTab, candidates, onSelectCandidate, currentAnalysis }: OverviewProps) {
+export default function Overview({ activeTab, candidates, onSelectCandidate, currentAnalysis, onExportReport }: OverviewProps) {
   const [candidateQuery, setCandidateQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [recommendationFilter, setRecommendationFilter] = useState<'all' | Candidate['recommendation']>('all')
@@ -235,12 +237,20 @@ export default function Overview({ activeTab, candidates, onSelectCandidate, cur
   return (
     <div className="p-6 space-y-5 animate-fade-in-up">
       {/* Page header */}
-      <div className="mb-1">
-        <h1 className="text-[22px] font-800 text-[#111827] tracking-tight">Recruitment Overview</h1>
-        <p className="text-[13px] text-[#6B7280] mt-0.5">
-          AI analysis results for{' '}
-          <span className="font-500 text-[#374151]">{currentAnalysis?.job_title || 'Job Position'}</span>
-        </p>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-800 text-[#111827] tracking-tight">Recruitment Overview</h1>
+          <p className="text-[13px] text-[#6B7280] mt-0.5">
+            AI analysis results for{' '}
+            <span className="font-500 text-[#374151]">{currentAnalysis?.job_title || 'Job Position'}</span>
+          </p>
+        </div>
+        {onExportReport && (
+          <button type="button" onClick={onExportReport} className="btn-secondary">
+            <Download className="size-4" />
+            Export report
+          </button>
+        )}
       </div>
 
       {/* KPI row */}

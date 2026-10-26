@@ -142,3 +142,142 @@ class FilterCriteriaIn(BaseModel):
     is_shortlisted: bool | None = None
     email_sent: bool | None = None
 
+
+class UserBase(BaseModel):
+    full_name: str
+    email: str
+    module: str = "admin_tpo"
+    role: str = "tpo"
+    phone: str | None = None
+    company_name: str | None = None
+    company_identifier: str | None = None
+    company_email: str | None = None
+    company_phone: str | None = None
+    company_address: str | None = None
+    company_website: str | None = None
+    designation: str | None = None
+    institution_name: str | None = None
+    institution_identifier: str | None = None
+    student_id: str | None = None
+
+
+class UserOut(UserBase):
+    id: str
+    is_approved: bool = True
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LoginIn(BaseModel):
+    module: str
+    email: str
+    password: str
+
+
+class RegisterIn(UserBase):
+    password: str
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class AuthTokenOut(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"
+
+
+class AuthResponseOut(BaseModel):
+    token: AuthTokenOut
+    user: UserOut
+
+
+class RecruiterValidationIn(BaseModel):
+    is_verified: bool
+
+
+class NoticeIn(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1)
+    audience: str = "All"
+    status: str = "draft"
+    expires_at: datetime | None = None
+
+
+class NoticeUpdateIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    content: str | None = Field(default=None, min_length=1)
+    audience: str | None = None
+    status: str | None = None
+    expires_at: datetime | None = None
+
+
+class StudentIn(BaseModel):
+    full_name: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=3, max_length=255)
+    student_id: str | None = None
+    phone: str | None = None
+    department: str | None = None
+    graduation_year: int | None = None
+    headline: str | None = None
+    location: str | None = None
+    cgpa: str | None = None
+    backlog_count: int = 0
+    skills: str | None = None
+    eligibility_status: str = "review"
+    placement_status: str = "not applied"
+
+
+class StudentUpdateIn(BaseModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    student_id: str | None = None
+    phone: str | None = None
+    department: str | None = None
+    graduation_year: int | None = None
+    headline: str | None = None
+    location: str | None = None
+    cgpa: str | None = None
+    backlog_count: int | None = None
+    skills: str | None = None
+    eligibility_status: str | None = None
+    placement_status: str | None = None
+
+
+class CompanyIn(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    sector: str | None = None
+    website: str | None = None
+    description: str | None = None
+    job_count: int = 0
+    status: str = "active"
+
+
+class CompanyUpdateIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    sector: str | None = None
+    website: str | None = None
+    description: str | None = None
+    job_count: int | None = None
+    status: str | None = None
+
+
+class EligibilityIn(BaseModel):
+    candidate_id: str
+    job_id: str
+    status: str = "review"
+    notes: str | None = None
+
+
+class EligibilityUpdateIn(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+    final_result: str | None = None
+    breakdown: list[dict] | None = None
+
+
+class NotificationIn(BaseModel):
+    title: str = Field(default="Notification", min_length=1, max_length=255)
+    message: str = ""
+    audience: str = "All"
